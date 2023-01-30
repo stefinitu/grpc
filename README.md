@@ -4,8 +4,8 @@ I hate this. :(
 
 Steps:
 0. check system environment variables and path for your GOPATH (main.go, go.mod etc etc are in $GOPATH/SRC!!)
-1. go get -v <all packages from files> in $GOPATH/SRC
-2. go install <all packages from files> in the same folder
+1. go get -v [all packages from files just like they are written in the go files] in $GOPATH/SRC
+2. go install [all packages from files] in the same folder
 3. Make sure Core folder is in $GOPATH/src (files from Core folder are in $GOPATH/src/core)
 4. When you solve all the package errors: go mod vendor in $GOPATH/src !!
 5. go run main.go master (If your $GOPATH is in Program Files or another C:// path, open Power Shell for Administrator!!) --DON'T DO THIS IF YOU WANT SNAPSHOT!
