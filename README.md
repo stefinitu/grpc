@@ -13,3 +13,4 @@ Steps:
 7. In another Terminal: go run main.go worker AFTER YOU CHANGE IN worker_node.go the port to 9100 ---> grpc.Dial(localhost:9100) for SNAPSHOT CASE!! (OTHERWISE, JUST KEEP IT THE WAY IT IS)
 9. If there is no error, congrats, you just created a Distributed System ++ Snapshot was created!
 
+From: https://dev.to/tikazyq/golang-in-action-how-to-implement-a-simple-distributed-system-2n0n
