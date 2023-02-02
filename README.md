@@ -7,9 +7,9 @@ Steps (HARD WAY ONLY FOR WINDOWS - CAN'T EXECUTE COMMANDS):
 2. go install [all packages from files] in the same folder. If you have error, try go get without -v or go mod vendor 
 3. Make sure Core folder is in $GOPATH/src (files from Core folder are in $GOPATH/src/core)
 4. When you solve all the package errors: go mod vendor in $GOPATH/src !! IF YOU STILL HAVE PROBLEMS WITH PACKAGES/VENDOR: go run -mod=mod main.go master (or worker)
-5. go run main.go master (If your $GOPATH is in Program Files or another C:// path, open Power Shell for Administrator!!) --DON'T DO THIS IF YOU WANT SNAPSHOT!
+5. go run main.go master (If your $GOPATH is in Program Files or another C:// path, open Power Shell for Administrator!!)
 6. docker run --rm --name sdk -d -p 9100:9100 -p 9110:9110 openstorage/mock-sdk-server  --THIS WILL START MOCK SDK SERVER instead of master grpc server from the code, ONLY FOR SNAPSHOT!
-7. In another Terminal: go run main.go worker AFTER YOU CHANGE IN worker_node.go the port to 9100 ---> grpc.Dial(localhost:9100) for SNAPSHOT CASE!! (OTHERWISE, JUST KEEP IT THE WAY IT IS)
+7. In another Terminal: go run main.go worker
 9. If there is no error, congrats, you just created a Distributed System ++ Snapshot was created!
 
 Steps (EASY WAY - WITH WSL UBUNTU 20.04 AND GOLANG 1.19.5):
