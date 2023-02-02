@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,13 +28,13 @@ type MasterNode struct {
 var node *MasterNode
 
 // GetMasterNode returns the node instance
-func GetMasterNode() *MasterNode {
+func GetMasterNode(port string) *MasterNode {
 	if node == nil {
 		// node
 		node = &MasterNode{}
 
 		// initialize node
-		if err := node.Init(); err != nil {
+		if err := node.Init(port); err != nil {
 			panic(err)
 		}
 	}
@@ -43,7 +42,7 @@ func GetMasterNode() *MasterNode {
 	return node
 }
 
-func (n *MasterNode) Init() (err error) {
+func (n *MasterNode) Init(port string) (err error) {
 	//CLEAN UNIVERSAL COLOR SET FILE
 	if err := os.Truncate("./universal_color_set.txt", 0); err != nil {
 		fmt.Printf("Failed to truncate: %v", err)
@@ -105,7 +104,7 @@ func (n *MasterNode) Init() (err error) {
 		v.GetVolumeId())
 
 	// grpc server listener with port as 50052
-	n.ln, err = net.Listen("tcp", ":50052")
+	n.ln, err = net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err
 	}
@@ -121,7 +120,8 @@ func (n *MasterNode) Init() (err error) {
 
 	//NONCE
 	rand.Seed(time.Now().UnixNano())
-	var Nonce = rand.Int() //Nonce generated
+	var Nonce = rand.Uint64() //Nonce generated (128-bit uint is hard to generate)
+	var stringNonce = fmt.Sprint(Nonce)
 	//write Nonce to Universal Color Set
 	f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -130,7 +130,7 @@ func (n *MasterNode) Init() (err error) {
 
 	defer f.Close()
 
-	if _, err = f.WriteString(strconv.Itoa(Nonce) + "\n"); err != nil {
+	if _, err = f.WriteString(stringNonce + "\n"); err != nil {
 		panic(err)
 	}
 
@@ -174,7 +174,7 @@ func (n *MasterNode) Init() (err error) {
 	return nil
 }
 
-func (n *MasterNode) Start() {
+func (n *MasterNode) Start(port string) {
 	// start grpc server
 	go n.svr.Serve(n.ln)
 

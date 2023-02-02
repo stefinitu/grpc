@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -33,13 +32,13 @@ type MasterWorkerNode struct {
 var nodemw *MasterWorkerNode
 
 // GetMasterNode returns the node instance
-func GetMasterWorkerNode(nr string) *MasterWorkerNode {
+func GetMasterWorkerNode(nr string, port string, nrDial string, portDials []string) *MasterWorkerNode {
 	if nodemw == nil {
 		// node
 		nodemw = &MasterWorkerNode{}
 
 		// initialize node
-		if err := nodemw.Init(nr); err != nil {
+		if err := nodemw.Init(nr, port, nrDial, portDials); err != nil {
 			panic(err)
 		}
 	}
@@ -47,7 +46,7 @@ func GetMasterWorkerNode(nr string) *MasterWorkerNode {
 	return nodemw
 }
 
-func (n *MasterWorkerNode) Init(nr string) (err error) {
+func (n *MasterWorkerNode) Init(nr string, port string, nrDial string, portDials []string) (err error) {
 	// // connect to master node
 	// n.conn, err = grpc.Dial("localhost:9100", grpc.WithInsecure())
 	// if err != nil {
@@ -103,18 +102,19 @@ func (n *MasterWorkerNode) Init(nr string) (err error) {
 	// fmt.Printf("Snapshot with id %s was created for volume %s\n",
 	// 	snap.GetSnapshotId(),
 	// 	v.GetVolumeId())
+	nrDialsInt, _ := strconv.Atoi(nrDial)
+	for i := 0; i < nrDialsInt; i++ {
+		n.conn, err = grpc.Dial("localhost:"+portDials[i], grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+		fmt.Println("Connected to " + portDials[i])
 
-	n.conn, err = grpc.Dial("localhost:50052", grpc.WithInsecure())
-	if err != nil {
-		return err
+		n.c = NewNodeServiceClient(n.conn)
 	}
-	fmt.Println("Connected to 50052")
-
-	n.c = NewNodeServiceClient(n.conn)
-
 	if nr == "2" {
 		// grpc server listener with port as 50051
-		n.ln, err = net.Listen("tcp", ":50051")
+		n.ln, err = net.Listen("tcp", ":"+port)
 		if err != nil {
 			return err
 		}
@@ -164,11 +164,28 @@ func (n *MasterWorkerNode) Init(nr string) (err error) {
 			c.AbortWithStatus(http.StatusOK)
 
 		})
+		n.api.POST("/insweep", func(c *gin.Context) {
+			// parse payload
+			var payload struct {
+				Marker string `json:"insweep"`
+			}
+			if err := c.ShouldBindJSON(&payload); err != nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+
+			// send command to node service
+			fmt.Println(payload.Marker)
+			n.nodeSvr.CmdChannel <- payload.Marker
+
+			c.AbortWithStatus(http.StatusOK)
+
+		})
 	}
 	return nil
 }
 
-func (n *MasterWorkerNode) Start(nr string) {
+func (n *MasterWorkerNode) Start(nr string, port string, nrDial string, portDials []string) {
 	if nr == "1" {
 		//commands from master
 		fmt.Println("worker node started")
@@ -269,37 +286,47 @@ func (n *MasterWorkerNode) Start(nr string) {
 						snap.GetSnapshotId(),
 						v.GetVolumeId())
 
-					//NONCE
-					rand.Seed(time.Now().UnixNano())
-					var Nonce2 = rand.Int() //Nonce generated
-					//write Nonce to Universal Color Set
-					f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-					if err != nil {
-						panic(err)
-					}
+					// //NONCE
+					// rand.Seed(time.Now().UnixNano())
+					// var Nonce = rand.Uint64() //Nonce generated (128-bit uint it is hard to generate)
+					// var stringNonce = fmt.Sprint(Nonce)
 
-					defer f.Close()
+					// //write Nonce to Universal Color Set
+					// f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+					// if err != nil {
+					// 	panic(err)
+					// }
 
-					if _, err = f.WriteString(strconv.Itoa(Nonce2) + "\n"); err != nil {
-						panic(err)
-					}
-					fmt.Println("Wrote in file")
+					// defer f.Close()
 
-					n.conn, err = grpc.Dial("localhost:50052", grpc.WithInsecure())
-					if err != nil {
-						os.Exit(1)
+					// if _, err = f.WriteString(stringNonce + "\n"); err != nil {
+					// 	panic(err)
+					// }
+					// fmt.Println("Wrote in file")
+
+					nrDialsInt, _ := strconv.Atoi(nrDial)
+					for i := 0; i < nrDialsInt; i++ {
+						n.conn, err = grpc.Dial("localhost:"+portDials[i], grpc.WithInsecure())
+						if err != nil {
+							os.Exit(1)
+						}
+						fmt.Println("Connected to " + portDials[i])
+
+						n.c = NewNodeServiceClient(n.conn)
 					}
-					fmt.Println("Connected to 50052")
 				}
 				if lineCount == 2 {
 					fmt.Println("Nonce already generated! REJECT!")
-					n.conn, err = grpc.Dial("localhost:50052", grpc.WithInsecure())
-					if err != nil {
-						os.Exit(1)
-					}
-					fmt.Println("Connected to 50052")
+					nrDialsInt, _ := strconv.Atoi(nrDial)
+					for i := 0; i < nrDialsInt; i++ {
+						n.conn, err = grpc.Dial("localhost:"+portDials[i], grpc.WithInsecure())
+						if err != nil {
+							os.Exit(1)
+						}
+						fmt.Println("Connected to " + portDials[i])
 
-					n.c = NewNodeServiceClient(n.conn)
+						n.c = NewNodeServiceClient(n.conn)
+					}
 				}
 			}
 		}

@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +20,7 @@ type WorkerNode struct {
 	c    NodeServiceClient // grpc client
 }
 
-func (n *WorkerNode) Init() (err error) {
+func (n *WorkerNode) Init(port string) (err error) {
 
 	// connect to master node
 	// n.conn, err = grpc.Dial("localhost:9100", grpc.WithInsecure())
@@ -83,7 +81,8 @@ func (n *WorkerNode) Init() (err error) {
 	// fmt.Println(snap.Descriptor())
 	// fmt.Println("\n\n")
 
-	n.conn, err = grpc.Dial("localhost:50051", grpc.WithInsecure())
+	n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
+
 	if err != nil {
 		return err
 	}
@@ -91,7 +90,7 @@ func (n *WorkerNode) Init() (err error) {
 	return nil
 }
 
-func (n *WorkerNode) Start() {
+func (n *WorkerNode) Start(port string) {
 	// log
 	fmt.Println("worker node started")
 
@@ -188,35 +187,37 @@ func (n *WorkerNode) Start() {
 					snap.GetSnapshotId(),
 					v.GetVolumeId())
 
-				//NONCE
-				rand.Seed(time.Now().UnixNano())
-				var Nonce3 = rand.Int() //Nonce generated
-				//write Nonce to Universal Color Set
-				f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-				if err != nil {
-					panic(err)
-				}
+				// //NONCE
+				// rand.Seed(time.Now().UnixNano())
 
-				defer f.Close()
+				// var Nonce = rand.Uint64() //Nonce generated (128-bit uint it is hard to generate)
+				// var stringNonce = fmt.Sprint(Nonce)
+				// //write Nonce to Universal Color Set
+				// f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				// if err != nil {
+				// 	panic(err)
+				// }
 
-				if _, err = f.WriteString(strconv.Itoa(Nonce3) + "\n"); err != nil {
-					panic(err)
-				}
-				fmt.Println("Wrote in file")
+				// defer f.Close()
+
+				// if _, err = f.WriteString(stringNonce + "\n"); err != nil {
+				// 	panic(err)
+				// }
+				// fmt.Println("Wrote in file")
 				fmt.Println("LOCAL SNAP COMPLETED!")
-				n.conn, err = grpc.Dial("localhost:50051", grpc.WithInsecure())
+				n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
 				if err != nil {
 					os.Exit(1)
 				}
-				fmt.Println("Connected to 50051")
+				fmt.Println("Connected to " + port)
 			}
 			if lineCount == 3 {
 				fmt.Println("Nonce already generated! REJECT!")
-				n.conn, err = grpc.Dial("localhost:50051", grpc.WithInsecure())
+				n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
 				if err != nil {
 					os.Exit(1)
 				}
-				fmt.Println("Connected to 50051")
+				fmt.Println("Connected to " + port)
 
 				n.c = NewNodeServiceClient(n.conn)
 			}
@@ -226,13 +227,13 @@ func (n *WorkerNode) Start() {
 
 var workerNode *WorkerNode
 
-func GetWorkerNode() *WorkerNode {
+func GetWorkerNode(port string) *WorkerNode {
 	if workerNode == nil {
 		// node
 		workerNode = &WorkerNode{}
 
 		// initialize node
-		if err := workerNode.Init(); err != nil {
+		if err := workerNode.Init(port); err != nil {
 			panic(err)
 		}
 	}
