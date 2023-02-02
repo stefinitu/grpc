@@ -25,6 +25,12 @@ Steps (EASY WAY - WITH WSL UBUNTU 20.04 AND GOLANG 1.19.5):
     -H "Content-Type=application/json" \
     -d '{"cmd": "touch /tmp/here"}' \
     http://localhost:9093/tasks
+       
+    curl -X POST \
+    -H "Content-Type=application/json" \
+    -d '{"marker": "7286039776793402467"}' \
+    http://localhost:9093/marker  
+    (FOR MARKER)
 or Postman with Header [content from -H] and Body [content from -d] in JSON Format
 10. worker received command!
 
