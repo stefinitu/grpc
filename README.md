@@ -29,7 +29,8 @@ or Postman with Header [content from -H] and Body [content from -d] in JSON Form
 
 PORTS:
 MASTER - go run main.go master (50052, 9093 API)
-MASTERWORKER - go run main.go masterworker 1 (dial to 50052, receive commands from API 9093), go run main.go masterworker 2 (listen to 50051, API 9092)
-WORKER - go run main.go worker (50051, 9092 API)
+MASTERWORKER - go run main.go masterworker 1 [ANYTHING] [NR OF PORTS TO DIAL] [ARRAY OF PORTS TO DIAL] (receive commands from API 9093), 
+go run main.go masterworker 2 [PORT CREATED FOR LISTEN] [NR OF PORTS TO DIAL] [ARRAY OF PORTS TO DIAL] (API 9092)
+WORKER - go run main.go worker (RECEIVE COMMANDS FROM 9092 API)
 
 From: https://dev.to/tikazyq/golang-in-action-how-to-implement-a-simple-distributed-system-2n0n
