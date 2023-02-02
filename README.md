@@ -28,7 +28,7 @@ or Postman with Header [content from -H] and Body [content from -d] in JSON Form
 9. worker received command!
 
 PORTS:
-MASTER - go run main.go master (50052, 9093 API)
+MASTER - go run main.go master (9093 API)
 MASTERWORKER - go run main.go masterworker 1 [ANYTHING] [NR OF PORTS TO DIAL] [ARRAY OF PORTS TO DIAL] (receive commands from API 9093), 
 go run main.go masterworker 2 [PORT CREATED FOR LISTEN] [NR OF PORTS TO DIAL] [ARRAY OF PORTS TO DIAL] (API 9092)
 WORKER - go run main.go worker (RECEIVE COMMANDS FROM 9092 API)
