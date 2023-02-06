@@ -30,5 +30,4 @@ func main() {
 	default:
 		panic("invalid node type")
 	}
-
 }
