@@ -33,7 +33,6 @@ func GetMasterNode(port string) *MasterNode {
 		// node
 		node = &MasterNode{}
 
-		// initialize node
 		if err := node.Init(port); err != nil {
 			panic(err)
 		}
@@ -43,11 +42,11 @@ func GetMasterNode(port string) *MasterNode {
 }
 
 func (n *MasterNode) Init(port string) (err error) {
-	//CLEAN UNIVERSAL COLOR SET FILE
+	//CLEAN UNIVERSAL COLOR SET FILE for a new algorithm
 	if err := os.Truncate("./universal_color_set.txt", 0); err != nil {
 		fmt.Printf("Failed to truncate: %v", err)
 	}
-
+	//nodul-radacina inregistreaza Snapshot odata ce este rulat
 	n.conn, err = grpc.Dial("localhost:9100", grpc.WithInsecure())
 	if err != nil {
 		os.Exit(1)
@@ -103,8 +102,7 @@ func (n *MasterNode) Init(port string) (err error) {
 		snap.GetSnapshotId(),
 		v.GetVolumeId())
 
-	// grpc server listener with port as 50052
-	n.ln, err = net.Listen("tcp", ":"+port)
+	n.ln, err = net.Listen("tcp", ":"+port) //asculta pe un port primit ca argument al comenzii de rulare
 	if err != nil {
 		return err
 	}
@@ -112,7 +110,6 @@ func (n *MasterNode) Init(port string) (err error) {
 	// grpc server
 	n.svr = grpc.NewServer()
 
-	// node service
 	n.nodeSvr = GetNodeServiceGrpcServer()
 
 	// register node service to grpc server
@@ -122,7 +119,7 @@ func (n *MasterNode) Init(port string) (err error) {
 	rand.Seed(time.Now().UnixNano())
 	var Nonce = rand.Uint64() //Nonce generated (128-bit uint is hard to generate)
 	var stringNonce = fmt.Sprint(Nonce)
-	//write Nonce to Universal Color Set
+	//write its Nonce to Universal Color Set
 	f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
@@ -137,7 +134,6 @@ func (n *MasterNode) Init(port string) (err error) {
 	// api
 	n.api = gin.Default()
 	n.api.POST("/tasks", func(c *gin.Context) {
-		// parse payload
 		var payload struct {
 			Cmd string `json:"cmd"`
 		}
@@ -154,7 +150,6 @@ func (n *MasterNode) Init(port string) (err error) {
 	})
 
 	n.api.POST("/marker", func(c *gin.Context) {
-		// parse payload
 		var payload struct {
 			Marker string `json:"marker"`
 		}
@@ -181,6 +176,6 @@ func (n *MasterNode) Start(port string) {
 	// start api server
 	_ = n.api.Run(":9093")
 
-	// wait for exit
 	n.svr.Stop()
+
 }

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -22,66 +21,7 @@ type WorkerNode struct {
 
 func (n *WorkerNode) Init(port string) (err error) {
 
-	// connect to master node
-	// n.conn, err = grpc.Dial("localhost:9100", grpc.WithInsecure())
-	// if err != nil {
-	// 	return err
-
-	// }
-
-	// // grpc client
-	// n.c = NewNodeServiceClient(n.conn)
-	// cluster := api.NewOpenStorageClusterClient(n.conn)
-	// clusterInfo, err := cluster.InspectCurrent(
-	// 	context.Background(),
-	// 	&api.SdkClusterInspectCurrentRequest{})
-	// if err != nil {
-	// 	gerr, _ := status.FromError(err)
-	// 	fmt.Printf("Error Code[%d] Message[%s]\n",
-	// 		gerr.Code(), gerr.Message())
-	// 	os.Exit(1)
-	// }
-	// fmt.Printf("Connected to Cluster %s\n",
-	// 	clusterInfo.GetCluster().GetId())
-	// volumes := api.NewOpenStorageVolumeClient(n.conn)
-	// v, err := volumes.Create(
-	// 	context.Background(),
-	// 	&api.SdkVolumeCreateRequest{
-	// 		Name: "myvol",
-	// 		Spec: &api.VolumeSpec{
-	// 			Size:    100 * 1024 * 1024 * 1024,
-	// 			HaLevel: 3,
-	// 		},
-	// 	})
-	// if err != nil {
-	// 	gerr, _ := status.FromError(err)
-	// 	fmt.Printf("Error Code[%d] Message[%s]\n",
-	// 		gerr.Code(), gerr.Message())
-	// 	os.Exit(1)
-	// }
-	// fmt.Printf("Volume 100Gi created with id %s\n", v.GetVolumeId())
-
-	// snap, err := volumes.SnapshotCreate(
-	// 	context.Background(),
-	// 	&api.SdkVolumeSnapshotCreateRequest{
-	// 		VolumeId: v.GetVolumeId(),
-	// 		Name:     fmt.Sprintf("snap-%v", time.Now().Unix()),
-	// 	},
-	// )
-	// if err != nil {
-	// 	gerr, _ := status.FromError(err)
-	// 	fmt.Printf("Error Code[%d] Message[%s]\n",
-	// 		gerr.Code(), gerr.Message())
-	// 	os.Exit(1)
-	// }
-	// fmt.Printf("Snapshot with id %s was create for volume %s\n",
-	// 	snap.GetSnapshotId(),
-	// 	v.GetVolumeId())
-
-	// fmt.Println(snap.Descriptor())
-	// fmt.Println("\n\n")
-
-	n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
+	n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure()) //dial la nodul Master
 
 	if err != nil {
 		return err
@@ -91,29 +31,28 @@ func (n *WorkerNode) Init(port string) (err error) {
 }
 
 func (n *WorkerNode) Start(port string) {
-	// log
 	fmt.Println("worker node started")
 
-	// report status
 	_, _ = n.c.ReportStatus(context.Background(), &Request{})
 
 	// assign task
 	stream, _ := n.c.AssignTask(context.Background(), &Request{})
+	sent := false
 	for {
 		// receive command from master node
-		res, err := stream.Recv()
+		res, err := stream.Recv() //asteapta primirea comenzilor/mesajelor-marker de la nodul Master
 		if err != nil {
 			return
 		}
 
 		// log command
-		fmt.Println("received command: ", res.Data)
+		fmt.Println("received command/marker: ", res.Data)
 
 		// execute command
 		parts := strings.Split(res.Data, " ")
 		numeric := regexp.MustCompile(`\d`).MatchString(parts[0])
 
-		if numeric == false {
+		if numeric == false { //daca nu primeste numar (Nonce), atunci a primit comanda
 			mycom := exec.Command(parts[0], parts[1:]...)
 			if err := mycom.Run(); err != nil {
 				fmt.Println(err)
@@ -123,15 +62,10 @@ func (n *WorkerNode) Start(port string) {
 			}
 		}
 		if numeric == true {
-			fmt.Println("Received Marker: ", parts[0])
-			file, _ := os.Open("./universal_color_set.txt")
-			fileScanner := bufio.NewScanner(file)
-			lineCount := 0
-			for fileScanner.Scan() {
-				lineCount++
-			}
-			if lineCount == 2 {
-				// connect to master node fro SNAPSHOT
+			fmt.Println("Received Marker: ", parts[0]) //a primit mesaj-marker
+
+			if sent == false {
+				// se conecteaza la serverul din container pentru Snapshot
 				n.conn, err = grpc.Dial("localhost:9100", grpc.WithInsecure())
 				if err != nil {
 					os.Exit(1)
@@ -152,7 +86,7 @@ func (n *WorkerNode) Start(port string) {
 				}
 				fmt.Printf("Connected to Cluster %s\n",
 					clusterInfo.GetCluster().GetId())
-				volumes := api.NewOpenStorageVolumeClient(n.conn)
+				volumes := api.NewOpenStorageVolumeClient(n.conn) //creeaza volum
 				v, err := volumes.Create(
 					context.Background(),
 					&api.SdkVolumeCreateRequest{
@@ -170,7 +104,7 @@ func (n *WorkerNode) Start(port string) {
 				}
 				fmt.Printf("Volume 100Gi created with id %s\n", v.GetVolumeId())
 
-				snap, err := volumes.SnapshotCreate(
+				snap, err := volumes.SnapshotCreate( //Snapshot
 					context.Background(),
 					&api.SdkVolumeSnapshotCreateRequest{
 						VolumeId: v.GetVolumeId(),
@@ -187,39 +121,25 @@ func (n *WorkerNode) Start(port string) {
 					snap.GetSnapshotId(),
 					v.GetVolumeId())
 
-				// //NONCE
-				// rand.Seed(time.Now().UnixNano())
-
-				// var Nonce = rand.Uint64() //Nonce generated (128-bit uint it is hard to generate)
-				// var stringNonce = fmt.Sprint(Nonce)
-				// //write Nonce to Universal Color Set
-				// f, err := os.OpenFile("./universal_color_set.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-				// if err != nil {
-				// 	panic(err)
-				// }
-
-				// defer f.Close()
-
-				// if _, err = f.WriteString(stringNonce + "\n"); err != nil {
-				// 	panic(err)
-				// }
-				// fmt.Println("Wrote in file")
-				fmt.Println("LOCAL SNAP COMPLETED!")
-				n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
+				fmt.Println("LOCAL SNAP COMPLETED!")                            //fiind nod-frunza, se instiinteaza LOCAL SNAP COMPLETE
+				n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure()) //reconectarea la nodul Master pentru noi comenzi
 				if err != nil {
 					os.Exit(1)
 				}
 				fmt.Println("Connected to " + port)
 			}
-			if lineCount == 3 {
-				fmt.Println("Nonce already generated! REJECT!")
-				n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
-				if err != nil {
-					os.Exit(1)
-				}
-				fmt.Println("Connected to " + port)
+			if sent == true {
+				fmt.Println("Marker already received! REJECT!") //daca a primit din nou un Marker, trimite mesajul REJECT
+				// n.conn, err = grpc.Dial("localhost:"+port, grpc.WithInsecure())
+				// if err != nil {
+				// 	os.Exit(1)
+				// }
+				// fmt.Println("Connected to " + port)
 
-				n.c = NewNodeServiceClient(n.conn)
+				// n.c = NewNodeServiceClient(n.conn)
+			}
+			if sent == false {
+				sent = true
 			}
 		}
 	}
@@ -229,10 +149,8 @@ var workerNode *WorkerNode
 
 func GetWorkerNode(port string) *WorkerNode {
 	if workerNode == nil {
-		// node
-		workerNode = &WorkerNode{}
 
-		// initialize node
+		workerNode = &WorkerNode{}
 		if err := workerNode.Init(port); err != nil {
 			panic(err)
 		}
