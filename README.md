@@ -10,10 +10,13 @@ Steps (EASY WAY - WITH WSL UBUNTU 20.04 AND GOLANG 1.19.5):
 6. cd /usr/local/go/src
 7. docker run --rm --name sdk -d -p 9100:9100 -p 9110:9110 openstorage/mock-sdk-server  --THIS WILL START MOCK SDK SERVER
 8. go run main.go worker (master can be run from Powershell or WSL Terminal)
-9.In another WSL TERMINAL : curl -X POST \
+9.In another WSL TERMINAL :
+
+curl -X POST \
     -H "Content-Type=application/json" \
     -d '{"cmd": "touch /tmp/here"}' \
     http://localhost:9093/tasks
+    (FOR LINUX COMMANDS)
        
     curl -X POST \
     -H "Content-Type=application/json" \
