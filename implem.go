@@ -45,8 +45,8 @@ func (n Node) InitiateSnapshot() {
 	n.RecordLocalState()
 	n.region_color = GenerateNonce()
 	SendMarkers(n.region_color, n.neighbors)
-	n.parent = int(n.region_color) //???
-	n.universal_color_set = UnionOfSets(int(n.region_color), n.universal_color_set)
+	n.parent = n.self_port
+	n.universal_color_set = UnionOfSetInteger(int(n.region_color), n.universal_color_set)
 	n.InitializeIncomingPortState()
 }
 
@@ -91,14 +91,14 @@ func (n Node) RecvMarker(nonce uint64, port int) {
 		SendMarkers(nonce, n.neighbors)
 		SendAccept(port)
 		n.region_color = nonce
-		n.universal_color_set = UnionOfSets(int(n.region_color), n.universal_color_set)
+		n.universal_color_set = UnionOfSetInteger(int(n.region_color), n.universal_color_set)
 		n.parent = port //parent:=j
 	} else {
 		RecordChannelState(port)
 		SendReject(port)
 		if n.region_color != nonce {
-			n.neighborhood_color_set = UnionOfSets(int(nonce), n.neighborhood_color_set)
-			n.neighboring_region_ports = UnionOfSets(port, n.neighboring_region_ports)
+			n.neighborhood_color_set = UnionOfSetInteger(int(nonce), n.neighborhood_color_set)
+			n.neighboring_region_ports = UnionOfSetInteger(port, n.neighboring_region_ports)
 		}
 	}
 }
@@ -112,7 +112,7 @@ func (n Node) AwaitInsweep() {
 
 func (n Node) RecvInsweep(port int) (ncsOutput []int) {
 	ncsInputReceived := make([]int, 0) //simularea primirii mesajului Insweep care ar contine parametrul NCS
-	n.neighborhood_color_set = Union(n.neighborhood_color_set, ncsInputReceived)
+	n.neighborhood_color_set = UnionOfSets(n.neighborhood_color_set, ncsInputReceived)
 	return n.neighborhood_color_set
 }
 
@@ -124,14 +124,14 @@ func (n Node) RecvTerminate(port int, nonce uint64, ncs []int) {
 		}
 	}
 	if contains == false {
-		n.universal_color_set = Union(n.universal_color_set, ncs)
-		n.universal_color_set = UnionOfSets(int(nonce), n.universal_color_set)
-		n.terminated_color_set = UnionOfSets(int(nonce), n.terminated_color_set)
+		n.universal_color_set = UnionOfSets(n.universal_color_set, ncs)
+		n.universal_color_set = UnionOfSetInteger(int(nonce), n.universal_color_set)
+		n.terminated_color_set = UnionOfSetInteger(int(nonce), n.terminated_color_set)
 		sort.Ints(n.universal_color_set)
 		sort.Ints(n.terminated_color_set)
-		if reflect.DeepEqual(n.universal_color_set, n.terminated_color_set) { //GLOBAL TERMINATION
-			portsToSendTerminate := UnionOfSets(n.parent, n.children)
-			portsToSendTerminate = Union(portsToSendTerminate, n.neighboring_region_ports)
+		if !reflect.DeepEqual(n.universal_color_set, n.terminated_color_set) { //NOT YET GLOBAL TERMINATION
+			portsToSendTerminate := UnionOfSetInteger(n.parent, n.children)
+			portsToSendTerminate = UnionOfSets(portsToSendTerminate, n.neighboring_region_ports)
 			var portAsArray []int
 			portAsArray[0] = port
 			portsToSendTerminate = Difference(portsToSendTerminate, portAsArray)
@@ -139,13 +139,15 @@ func (n Node) RecvTerminate(port int, nonce uint64, ncs []int) {
 			for _, neighbor_port := range portsToSendTerminate {
 				SendTerminate(nonce, neighbor_port, ncs)
 			}
+		}else{ //GLOBAL TERMINATION
+			fmt.Println("GLOBAL TERMINATION")
 		}
 	}
 }
 
 func (n Node) RecvAccept(port int) {
-	n.children = UnionOfSets(port, n.children)
-	union := Union(n.children, n.unrelated)
+	n.children = UnionOfSetInteger(port, n.children)
+	union := UnionOfSets(n.children, n.unrelated)
 	var parentAsArray []int
 	parentAsArray[0] = n.parent
 	difference := Difference(n.neighbors, parentAsArray)
@@ -158,8 +160,8 @@ func (n Node) RecvAccept(port int) {
 }
 
 func (n Node) RecvReject(port int) {
-	n.children = UnionOfSets(port, n.children)
-	union := Union(n.children, n.unrelated)
+	n.unrelated = UnionOfSetInteger(port, n.unrelated)
+	union := UnionOfSets(n.children, n.unrelated)
 	var parentAsArray []int
 	parentAsArray[0] = n.parent
 	difference := Difference(n.neighbors, parentAsArray)
@@ -171,7 +173,7 @@ func (n Node) RecvReject(port int) {
 	}
 }
 
-func UnionOfSets(nonce int, colorset []int) []int {
+func UnionOfSetInteger(nonce int, colorset []int) []int {
 	for _, elem := range colorset {
 		if elem == nonce {
 			return colorset
@@ -180,7 +182,7 @@ func UnionOfSets(nonce int, colorset []int) []int {
 	return append(colorset, nonce)
 }
 
-func Union(a, b []int) []int {
+func UnionOfSets(a, b []int) []int {
 	m := make(map[int]bool)
 	for _, item := range a {
 		m[item] = true
@@ -217,7 +219,7 @@ func (n Node) LocalSnapComplete() {
 		}
 	} else {
 		n.AwaitInsweep()
-		if n.parent != int(n.region_color) { //non-initiator leaf node
+		if n.parent != int(n.self_port) { //non-initiator leaf node
 			SendInsweep(n.parent_port, n.neighborhood_color_set)
 		} else { //initiator leaf node
 			SendTerminate(n.region_color, n.self_port, n.neighborhood_color_set)

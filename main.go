@@ -11,7 +11,11 @@ func main() {
 	switch nodeType {
 	case "master":
 		portValue := os.Args[2]
-		core.GetMasterNode(portValue).Start(portValue)
+		if(os.Args[3]=="1"){
+		core.GetMasterNode(portValue).Start(portValue)}else{
+			core.GetMaster2Node(portValue).Start(portValue)
+		}
+
 	case "worker":
 		portValue := os.Args[2]
 		core.GetWorkerNode(portValue).Start(portValue)
